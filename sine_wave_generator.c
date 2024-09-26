@@ -7,14 +7,18 @@ int main() {
 
     unsigned char  DATA_WIDTH;
     unsigned int NUMS_PER_CYCLE;
+    char BLOCK_RAM;
 
 
-    printf("This tool will help you create a VHDL package to be used in creating a sine wave in your FPGA design\r\nPlease enter your preferred Data Width :");
+    printf("This tool will help you create a tiny VHDL code which continuously creates sine wave\r\nPlease enter your preferred Data Width :");
     scanf("%d",&DATA_WIDTH);
     const int amp = pow(2,DATA_WIDTH-1);
-    printf("Now enter the number of samples in a single output sine cycle :");
+    printf("Enter the number of samples in a single sine cycle :");
     scanf("%d",&NUMS_PER_CYCLE);
     const float qlty = (2*M_PI)/NUMS_PER_CYCLE;
+
+    printf("You want the table to be implemented with BLOCK RAM? (y/n):");
+    scanf(" %c",&BLOCK_RAM);
 
     /* Open the output file */ 
     FILE *fp; 
@@ -44,21 +48,27 @@ int main() {
     fprintf(fp, "end Sine_Wave_Gen;\n\n");
 
     /* Write the architecture */ 
-    fprintf(fp, "architecture Behavioral of Sine_Wave_Gen is\n");
+    fprintf(fp, "architecture Behavioral of Sine_Wave_Gen is\n\n");
 
     /* writing the sine table constants*/
     char s_print2 [] = "SIN_TABLE";
-    fprintf(fp,"constant %s_Length       : integer := %d;\n",s_print2,NUMS_PER_CYCLE); 
-    fprintf(fp,"constant SIN_DATA_WIDTH         : integer := %d;\n",DATA_WIDTH); 
+    fprintf(fp,"constant %s_Length          : integer := %d;\n",s_print2,NUMS_PER_CYCLE); 
+    fprintf(fp,"constant SIN_DATA_WIDTH            : integer := %d;\n",DATA_WIDTH); 
     fprintf(fp,"type %sType is array(0 to %s_Length-1) of integer;\n",s_print2,s_print2);
     fprintf(fp,"constant %s : %sType :=(",s_print2,s_print2);    
     for(float i=0;i<((2*M_PI)-qlty);i+=qlty)
         fprintf(fp,"%d,",((int)(amp*sin(i))));
-    fprintf(fp,"%d);\r\n\n",((int)(amp*sin(((2*M_PI)-qlty)))));
+    fprintf(fp,"%d);\n",((int)(amp*sin(((2*M_PI)-qlty)))));
+    
+    /* using the attribute ram_style if the user wants the array to be implemented with Block Ram*/
+    if(BLOCK_RAM=='y'){
+        fprintf(fp,"attribute ram_style : string;\n");
+	    fprintf(fp,"attribute ram_style of %s : signal is \"block\";\n",s_print2);
+    }
 
-    fprintf(fp, "signal indx_cycle      : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);    
-    fprintf(fp, "signal sin_indx        : unsigned(%d downto 0) := (others=>'0');\n",(unsigned int)ceil((log2f((float)NUMS_PER_CYCLE)-1)));
-    fprintf(fp, "signal cnt             : unsigned(31 downto 0) := (others=>'0');\n\n");
+    fprintf(fp, "signal indx_cycle                  : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);    
+    fprintf(fp, "signal sin_indx                    : unsigned(%d downto 0) := (others=>'0');\n",(unsigned int)ceil((log2f((float)NUMS_PER_CYCLE)-1)));
+    fprintf(fp, "signal cnt                         : unsigned(31 downto 0) := (others=>'0');\n\n");
 
     fprintf(fp, "begin\n");
     fprintf(fp, "indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;\n");

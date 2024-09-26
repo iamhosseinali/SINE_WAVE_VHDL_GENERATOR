@@ -37,17 +37,17 @@ signal sin_data		: signed(SIN_DATA_WIDTH-1 downto 0) := (others=>'0');
 
 begin
 process(clk)
-		begin
-			if rising_edge(clk) then 
-				cnt			<= cnt+1;
-				M_AXIS_tVALID	<= '0';
-				if(cnt=Cycles)then 
-				    cnt               <= (others=>'0');			
-					sin_indx	      <= sin_indx+1;
-					M_AXIS_tVALID	  <= '1'; 	
-                    M_AXIS_tDATA      <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));																			
-				end if;
-			end if;
+begin
+	if rising_edge(clk) then 
+		cnt			<= cnt+1;
+		M_AXIS_tVALID	<= '0';
+		if(cnt=Cycles)then 
+		    cnt               <= (others=>'0');			
+			sin_indx	      <= sin_indx+1;
+			M_AXIS_tVALID	  <= '1'; 	
+            M_AXIS_tDATA      <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));																			
+		end if;
+	end if;
 end process;
 
 end Behavioral;

@@ -32,7 +32,8 @@ for(float i=0;i<((2*M_PI)-qlty);i+=qlty)
 fprintf(fp,"%d);\r\n",((int)(amp*sin(((2*M_PI)-qlty)))));
 
 /* closing the file */
-fprintf(fp,"end sin_table;\n");
+fprintf(fp,"end sin_table;\n\n");
+fprintf(fp,"---- Copy and paste the below code to use the generated package:\n---- use work.sin_table.ALL;");
 printf("file created! use the generated package in your design\r\n");
 
 }

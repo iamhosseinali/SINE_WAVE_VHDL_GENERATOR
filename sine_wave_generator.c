@@ -37,7 +37,7 @@ int main() {
     fprintf(fp, ");\n");
     fprintf(fp, "Port (\n");
     fprintf(fp, "    M_AXIS_ACLK    : in STD_LOGIC;\n");
-    fprintf(fp, "    M_AXIS_ARESETN : in STD_LOGIC;   --- negative reset\n");
+    fprintf(fp, "    M_AXIS_ARESETN : in STD_LOGIC;   --- negative asynch reset\n");
     fprintf(fp, "    M_AXIS_tDATA   : out std_logic_vector(%d downto 0);\n",DATA_WIDTH-1);
     fprintf(fp, "    M_AXIS_tVALID  : out std_logic\n");
     fprintf(fp, ");\n");
@@ -56,8 +56,8 @@ int main() {
         fprintf(fp,"%d,",((int)(amp*sin(i))));
     fprintf(fp,"%d);\r\n\n",((int)(amp*sin(((2*M_PI)-qlty)))));
 
-    fprintf(fp, "signal indx_cycle      : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);
-    fprintf(fp, "signal sin_indx        : unsigned(6 downto 0) := (others=>'0');\n");
+    fprintf(fp, "signal indx_cycle      : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);    
+    fprintf(fp, "signal sin_indx        : unsigned(%d downto 0) := (others=>'0');\n",(unsigned int)ceil((log2f((float)NUMS_PER_CYCLE)-1)));
     fprintf(fp, "signal cnt             : unsigned(31 downto 0) := (others=>'0');\n\n");
 
     fprintf(fp, "begin\n");
@@ -66,8 +66,9 @@ int main() {
     fprintf(fp, "begin\n");
     fprintf(fp, "    if rising_edge(M_AXIS_ACLK) then\n");
     fprintf(fp, "       if (M_AXIS_ARESETN='0') then    --- Asynch reset\n");
-    fprintf(fp, "           cnt         <= (others=>'0');\n");
-    fprintf(fp, "           sin_indx    <= (others=>'0');\n");
+    fprintf(fp, "           cnt             <= (others=>'0');\n");
+    fprintf(fp, "           sin_indx        <= (others=>'0');\n");
+    fprintf(fp, "           M_AXIS_tVALID   <= '0';\n");
     fprintf(fp, "       else\n");
     fprintf(fp, "           cnt             <= cnt+1;\n");
     fprintf(fp, "           M_AXIS_tVALID   <= '0';\n");

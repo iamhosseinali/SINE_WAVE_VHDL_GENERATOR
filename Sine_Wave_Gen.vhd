@@ -5,9 +5,9 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity Sine_Wave_Gen is
 Port (
-    M_AXIS_ACLK    : in STD_LOGIC; --- This should be 100000000 Hz
+    M_AXIS_ACLK    : in STD_LOGIC; --- This should be 120000000 Hz
     M_AXIS_ARESETN : in STD_LOGIC;   --- negative asynch reset
-    M_AXIS_tDATA   : out std_logic_vector(7 downto 0); --- ACTUAL_OUTPUT_SIGNAL_FREQUENCY : 20000 Hz
+    M_AXIS_tDATA   : out std_logic_vector(15 downto 0); --- ACTUAL_OUTPUT_SIGNAL_FREQUENCY : 600000 Hz
     M_AXIS_tVALID  : out std_logic
 );
 end Sine_Wave_Gen;
@@ -15,12 +15,12 @@ end Sine_Wave_Gen;
 architecture Behavioral of Sine_Wave_Gen is
 
 constant SIN_TABLE_Length          : integer := 100;
-constant SIN_DATA_WIDTH            : integer := 8;
+constant SIN_DATA_WIDTH            : integer := 16;
 type SIN_TABLEType is array(0 to SIN_TABLE_Length-1) of integer;
-constant SIN_TABLE : SIN_TABLEType :=(0,8,16,23,31,39,47,54,61,68,75,81,87,93,98,103,108,112,115,119,121,123,125,126,127,127,127,126,125,123,121,119,115,112,108,103,98,93,87,81,75,68,61,54,47,39,31,23,16,8,0,-8,-16,-23,-31,-39,-47,-54,-61,-68,-75,-81,-87,-93,-98,-103,-108,-112,-115,-119,-121,-123,-125,-126,-127,-127,-127,-126,-125,-123,-121,-119,-115,-112,-108,-103,-98,-93,-87,-81,-75,-68,-61,-54,-47,-39,-31,-23,-16,-8);
+constant SIN_TABLE : SIN_TABLEType :=(0,2057,4106,6140,8149,10125,12062,13951,15786,17557,19260,20887,22431,23886,25248,26509,27666,28714,29649,30466,31164,31738,32187,32509,32703,32767,32703,32509,32187,31738,31164,30466,29649,28714,27666,26509,25248,23886,22431,20887,19260,17557,15786,13951,12062,10125,8149,6140,4106,2057,0,-2057,-4106,-6140,-8149,-10125,-12062,-13951,-15786,-17558,-19260,-20887,-22431,-23886,-25248,-26509,-27666,-28714,-29649,-30466,-31164,-31738,-32187,-32509,-32703,-32767,-32703,-32509,-32187,-31738,-31164,-30466,-29649,-28714,-27666,-26509,-25248,-23886,-22431,-20887,-19260,-17557,-15786,-13951,-12062,-10125,-8149,-6140,-4106,-2057);
 attribute ram_style : string;
-attribute ram_style of SIN_TABLE : signal is "block";
-signal indx_cycle                  : integer := 49;
+attribute ram_style of SIN_TABLE : constant is "block";
+signal indx_cycle                  : integer := 1;
 signal sin_indx                    : unsigned(6 downto 0) := (others=>'0');
 signal cnt                         : unsigned(31 downto 0) := (others=>'0');
 

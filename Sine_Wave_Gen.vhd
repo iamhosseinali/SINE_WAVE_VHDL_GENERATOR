@@ -4,33 +4,27 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
 entity Sine_Wave_Gen is
-generic (
-    IP_INPUT_FREQUENCY         : integer := 100000000; --- in Hz
-    OUTPUT_SIGNAL_FREQUENCY    : integer := 50;        --- in Hz, max = M_AXIS_ACLK/256, if you need more, make MAX_OUTPUT_SIGNAL_FRQ true
-    MAX_OUTPUT_SIGNAL_FRQ      : boolean := false      --- true this if you need more than M_AXIS_ACLK/256 then you can achieve M_AXIS_ACLK/128
-);
 Port (
-    M_AXIS_ACLK    : in STD_LOGIC;
+    M_AXIS_ACLK    : in STD_LOGIC; --- This should be 100000000 Hz
     M_AXIS_ARESETN : in STD_LOGIC;   --- negative asynch reset
-    M_AXIS_tDATA   : out std_logic_vector(7 downto 0);
+    M_AXIS_tDATA   : out std_logic_vector(7 downto 0); --- ACTUAL_OUTPUT_SIGNAL_FREQUENCY : 20000 Hz
     M_AXIS_tVALID  : out std_logic
 );
 end Sine_Wave_Gen;
 
 architecture Behavioral of Sine_Wave_Gen is
 
-constant SIN_TABLE_Length          : integer := 128;
+constant SIN_TABLE_Length          : integer := 100;
 constant SIN_DATA_WIDTH            : integer := 8;
 type SIN_TABLEType is array(0 to SIN_TABLE_Length-1) of integer;
-constant SIN_TABLE : SIN_TABLEType :=(0,6,12,18,24,31,37,43,48,54,60,65,71,76,81,85,90,94,98,102,106,109,112,115,118,120,122,124,125,126,127,127,127,127,127,126,125,124,122,120,118,115,112,109,106,102,98,94,90,85,81,76,71,65,60,54,48,43,37,31,24,18,12,6,0,-6,-12,-18,-24,-31,-37,-43,-48,-54,-60,-65,-71,-76,-81,-85,-90,-94,-98,-102,-106,-109,-112,-115,-118,-120,-122,-124,-125,-126,-127,-127,-127,-127,-127,-126,-125,-124,-122,-120,-118,-115,-112,-109,-106,-102,-98,-94,-90,-85,-81,-76,-71,-65,-60,-54,-48,-43,-37,-31,-24,-18,-12,-6);
+constant SIN_TABLE : SIN_TABLEType :=(0,8,16,23,31,39,47,54,61,68,75,81,87,93,98,103,108,112,115,119,121,123,125,126,127,127,127,126,125,123,121,119,115,112,108,103,98,93,87,81,75,68,61,54,47,39,31,23,16,8,0,-8,-16,-23,-31,-39,-47,-54,-61,-68,-75,-81,-87,-93,-98,-103,-108,-112,-115,-119,-121,-123,-125,-126,-127,-127,-127,-126,-125,-123,-121,-119,-115,-112,-108,-103,-98,-93,-87,-81,-75,-68,-61,-54,-47,-39,-31,-23,-16,-8);
 attribute ram_style : string;
 attribute ram_style of SIN_TABLE : signal is "block";
-signal indx_cycle                  : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/SIN_TABLE_Length;
+signal indx_cycle                  : integer := 49;
 signal sin_indx                    : unsigned(6 downto 0) := (others=>'0');
 signal cnt                         : unsigned(31 downto 0) := (others=>'0');
 
 begin
-indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;
 process(M_AXIS_ACLK)
 begin
     if rising_edge(M_AXIS_ACLK) then

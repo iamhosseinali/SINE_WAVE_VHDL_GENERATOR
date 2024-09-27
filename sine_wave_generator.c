@@ -2,20 +2,68 @@
 #include <math.h>
 #include <stdio.h>
 
+#define MAX_INDX 500
+unsigned int best_index,ACTUAL_OUTPUT_SIGNAL_FREQUENCY;
+unsigned int CALCULATE_NUMS_PER_CYCLE(unsigned int IP_INPUT_FREQUENCY, unsigned int OUTPUT_SIGNAL_FREQUENCY, unsigned int NUMS_PER_CYCLE_LOW, unsigned int NUMS_PER_CYCLE_HIGH){
+    
+    float delta[MAX_INDX*(NUMS_PER_CYCLE_HIGH-NUMS_PER_CYCLE_LOW)]; 
+    unsigned int min,best_NUMS_PER_CYCLE; 
+    unsigned char first_time = 1; 
+    
+    for(int i = NUMS_PER_CYCLE_LOW;i<NUMS_PER_CYCLE_HIGH;i++)
+    {
+        for(int index =1;index<MAX_INDX;index++)
+        {
+            delta[index-1] = abs((IP_INPUT_FREQUENCY/(i*index)) - OUTPUT_SIGNAL_FREQUENCY);
+            if(first_time){
+                min = delta[0];
+                first_time = 0;
+            }
+            if(delta[index-1] < min)
+            {
+                min                 = delta[index-1];
+                best_index          = index; 
+                best_NUMS_PER_CYCLE = i; 
+            }     
+        }
+    }
+    ACTUAL_OUTPUT_SIGNAL_FREQUENCY = IP_INPUT_FREQUENCY/(best_NUMS_PER_CYCLE*best_index);
+    printf("ACTUAL_OUTPUT_SIGNAL_FREQUENCY : %d \nindex : %d\nNUMS_PER_CYCLE : %d\n",ACTUAL_OUTPUT_SIGNAL_FREQUENCY, best_index, best_NUMS_PER_CYCLE);
+    return best_NUMS_PER_CYCLE;
+}
 
 int main() {
 
     unsigned char  DATA_WIDTH;
-    unsigned int NUMS_PER_CYCLE;
+    unsigned int NUMS_PER_CYCLE,IP_INPUT_FREQUENCY,OUTPUT_SIGNAL_FREQUENCY,NUMS_PER_CYCLE_HIGH,NUMS_PER_CYCLE_LOW;
     char BLOCK_RAM;
+    unsigned char strategy; 
 
 
-    printf("This tool will help you create a tiny VHDL code which continuously creates sine wave\r\nPlease enter your preferred Data Width :");
+    printf("This tool will help you create a tiny VHDL code which continuously creates sine wave\r\nPlease enter your preferred Data Width :"); 
     scanf("%d",&DATA_WIDTH);
     const int amp = pow(2,DATA_WIDTH-1);
-    printf("Enter the number of samples in a single sine cycle :");
-    scanf("%d",&NUMS_PER_CYCLE);
+    printf("There are two strategies :\n");
+    printf("0. You specify number of samples in a single sine cycle and the generated code will have IP_INPUT_FREQUENCY and OUTPUT_SIGNAL_FREQUENCY as generic \n"); 
+    printf("1. You specify IP_INPUT_FREQUENCY and OUTPUT_SIGNAL_FREQUENCY and a range for number of samples and the tool itself calculates the best NUMS_PER_CYCLE that can meet your desired OUTPUT_SIGNAL_FREQUENCY\n"); 
+    printf("Choose the strategy (0/1) :");
+    scanf("%u",&strategy);
+
+    if(!strategy){
+        printf("Enter the number of samples in a single sine cycle :");
+        scanf("%d",&NUMS_PER_CYCLE);
+    }else{
+        printf("Enter IP_INPUT_FREQUENCY :");
+        scanf("%d",&IP_INPUT_FREQUENCY);
+        printf("Enter OUTPUT_SIGNAL_FREQUENCY :");
+        scanf("%d",&OUTPUT_SIGNAL_FREQUENCY);
+        printf("Enter NUMS_PER_CYCLE range for example 100.300 :");
+        scanf("%d.%d",&NUMS_PER_CYCLE_LOW,&NUMS_PER_CYCLE_HIGH);
+        NUMS_PER_CYCLE = CALCULATE_NUMS_PER_CYCLE(IP_INPUT_FREQUENCY,OUTPUT_SIGNAL_FREQUENCY,NUMS_PER_CYCLE_LOW,NUMS_PER_CYCLE_HIGH);
+    }
+
     const float qlty = (2*M_PI)/NUMS_PER_CYCLE;
+
 
     printf("You want the table to be implemented with BLOCK RAM? (y/n):");
     scanf(" %c",&BLOCK_RAM);
@@ -34,15 +82,24 @@ int main() {
     
     /* Write the entity declaration */ 
     fprintf(fp, "entity Sine_Wave_Gen is\n");
-    fprintf(fp, "generic (\n");
-    fprintf(fp, "    IP_INPUT_FREQUENCY         : integer := 100000000; --- in Hz\n");
-    fprintf(fp, "    OUTPUT_SIGNAL_FREQUENCY    : integer := 50;        --- in Hz, max = M_AXIS_ACLK/%d, if you need more, make MAX_OUTPUT_SIGNAL_FRQ true\n",NUMS_PER_CYCLE*2);
-    fprintf(fp, "    MAX_OUTPUT_SIGNAL_FRQ      : boolean := false      --- true this if you need more than M_AXIS_ACLK/%d then you can achieve M_AXIS_ACLK/%d\n",NUMS_PER_CYCLE*2,NUMS_PER_CYCLE);
-    fprintf(fp, ");\n");
+    if(!strategy){
+        fprintf(fp, "generic (\n");
+        fprintf(fp, "    IP_INPUT_FREQUENCY         : integer := 100000000; --- in Hz\n");
+        fprintf(fp, "    OUTPUT_SIGNAL_FREQUENCY    : integer := 50;        --- in Hz, max = M_AXIS_ACLK/%d, if you need more, make MAX_OUTPUT_SIGNAL_FRQ true\n",NUMS_PER_CYCLE*2);
+        fprintf(fp, "    MAX_OUTPUT_SIGNAL_FRQ      : boolean := false      --- true this if you need more than M_AXIS_ACLK/%d then you can achieve M_AXIS_ACLK/%d\n",NUMS_PER_CYCLE*2,NUMS_PER_CYCLE);
+        fprintf(fp, ");\n");
+    }
     fprintf(fp, "Port (\n");
-    fprintf(fp, "    M_AXIS_ACLK    : in STD_LOGIC;\n");
+    if(!strategy){
+        fprintf(fp, "    M_AXIS_ACLK    : in STD_LOGIC;\n");
+    }else {
+        fprintf(fp, "    M_AXIS_ACLK    : in STD_LOGIC; --- This should be %d Hz\n",IP_INPUT_FREQUENCY);
+    }
     fprintf(fp, "    M_AXIS_ARESETN : in STD_LOGIC;   --- negative asynch reset\n");
-    fprintf(fp, "    M_AXIS_tDATA   : out std_logic_vector(%d downto 0);\n",DATA_WIDTH-1);
+    if(!strategy)
+        fprintf(fp, "    M_AXIS_tDATA   : out std_logic_vector(%d downto 0);\n",DATA_WIDTH-1);
+    else
+         fprintf(fp, "    M_AXIS_tDATA   : out std_logic_vector(%d downto 0); --- ACTUAL_OUTPUT_SIGNAL_FREQUENCY : %d Hz\n",DATA_WIDTH-1,ACTUAL_OUTPUT_SIGNAL_FREQUENCY);   
     fprintf(fp, "    M_AXIS_tVALID  : out std_logic\n");
     fprintf(fp, ");\n");
     fprintf(fp, "end Sine_Wave_Gen;\n\n");
@@ -63,15 +120,18 @@ int main() {
     /* using the attribute ram_style if the user wants the array to be implemented with Block Ram*/
     if(BLOCK_RAM=='y'){
         fprintf(fp,"attribute ram_style : string;\n");
-	    fprintf(fp,"attribute ram_style of %s : signal is \"block\";\n",s_print2);
+	    fprintf(fp,"attribute ram_style of %s : constant is \"block\";\n",s_print2);
     }
-
-    fprintf(fp, "signal indx_cycle                  : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);    
+    if(!strategy)
+        fprintf(fp, "signal indx_cycle                  : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);  
+    else 
+        fprintf(fp, "signal indx_cycle                  : integer := %d;\n",best_index-1);  
     fprintf(fp, "signal sin_indx                    : unsigned(%d downto 0) := (others=>'0');\n",(unsigned int)ceil((log2f((float)NUMS_PER_CYCLE)-1)));
     fprintf(fp, "signal cnt                         : unsigned(31 downto 0) := (others=>'0');\n\n");
 
     fprintf(fp, "begin\n");
-    fprintf(fp, "indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;\n");
+    if(!strategy)
+        fprintf(fp, "indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;\n");
     fprintf(fp, "process(M_AXIS_ACLK)\n");
     fprintf(fp, "begin\n");
     fprintf(fp, "    if rising_edge(M_AXIS_ACLK) then\n");

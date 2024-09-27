@@ -31,46 +31,56 @@ int main() {
     /* Write the entity declaration */ 
     fprintf(fp, "entity Sine_Wave_Gen is\n");
     fprintf(fp, "generic (\n");
-    fprintf(fp, "    IP_INPUT_FREQUENCY : integer := 100000000;\n");
-    fprintf(fp, "    OUTPUT_SIGNAL_FREQUENCY : integer := 50\n");
+    fprintf(fp, "    IP_INPUT_FREQUENCY         : integer := 100000000; --- in Hz\n");
+    fprintf(fp, "    OUTPUT_SIGNAL_FREQUENCY    : integer := 50;        --- in Hz, max = M_AXIS_ACLK/%d, if you need more, make MAX_OUTPUT_SIGNAL_FRQ true\n",NUMS_PER_CYCLE*2);
+    fprintf(fp, "    MAX_OUTPUT_SIGNAL_FRQ      : boolean := false      --- true this if you need more than M_AXIS_ACLK/%d then you can achieve M_AXIS_ACLK/%d\n",NUMS_PER_CYCLE*2,NUMS_PER_CYCLE);
     fprintf(fp, ");\n");
     fprintf(fp, "Port (\n");
-    fprintf(fp, "    clk : in STD_LOGIC;\n");
-    fprintf(fp, "    M_AXIS_tDATA : out std_logic_vector(%d downto 0);\n",DATA_WIDTH-1);
-    fprintf(fp, "    M_AXIS_tVALID : out std_logic\n");
+    fprintf(fp, "    M_AXIS_ACLK    : in STD_LOGIC;\n");
+    fprintf(fp, "    M_AXIS_ARESETN : in STD_LOGIC;   --- negative reset\n");
+    fprintf(fp, "    M_AXIS_tDATA   : out std_logic_vector(%d downto 0);\n",DATA_WIDTH-1);
+    fprintf(fp, "    M_AXIS_tVALID  : out std_logic\n");
     fprintf(fp, ");\n");
     fprintf(fp, "end Sine_Wave_Gen;\n\n");
 
     /* Write the architecture */ 
     fprintf(fp, "architecture Behavioral of Sine_Wave_Gen is\n");
-    fprintf(fp, "constant Cycles  : integer := (IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY)/(2**SIN_DATA_WIDTH-1);\n");
-    fprintf(fp, "signal sin_indx  : unsigned(6 downto 0) := (others=>'0');\n");
-    fprintf(fp, "signal cnt       : unsigned(31 downto 0) := (others=>'0');\n\n");
 
     /* writing the sine table constants*/
     char s_print2 [] = "SIN_TABLE";
-    fprintf(fp,"constant %s_Length : integer := %d;\n",s_print2,NUMS_PER_CYCLE); 
-    fprintf(fp,"constant SIN_DATA_WIDTH : integer := %d;\n",DATA_WIDTH); 
+    fprintf(fp,"constant %s_Length       : integer := %d;\n",s_print2,NUMS_PER_CYCLE); 
+    fprintf(fp,"constant SIN_DATA_WIDTH         : integer := %d;\n",DATA_WIDTH); 
     fprintf(fp,"type %sType is array(0 to %s_Length-1) of integer;\n",s_print2,s_print2);
     fprintf(fp,"constant %s : %sType :=(",s_print2,s_print2);    
     for(float i=0;i<((2*M_PI)-qlty);i+=qlty)
-    {
         fprintf(fp,"%d,",((int)(amp*sin(i))));
-    }
     fprintf(fp,"%d);\r\n\n",((int)(amp*sin(((2*M_PI)-qlty)))));
 
+    fprintf(fp, "signal indx_cycle      : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/%s_Length;\n",s_print2);
+    fprintf(fp, "signal sin_indx        : unsigned(6 downto 0) := (others=>'0');\n");
+    fprintf(fp, "signal cnt             : unsigned(31 downto 0) := (others=>'0');\n\n");
+
     fprintf(fp, "begin\n");
-    fprintf(fp, "process(clk)\n");
+    fprintf(fp, "indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;\n");
+    fprintf(fp, "process(M_AXIS_ACLK)\n");
     fprintf(fp, "begin\n");
-    fprintf(fp, "    if rising_edge(clk) then\n");
-    fprintf(fp, "        cnt <= cnt+1;\n");
-    fprintf(fp, "        M_AXIS_tVALID <= '0';\n");
-    fprintf(fp, "        if(cnt=Cycles)then\n");
-    fprintf(fp, "            cnt <= (others=>'0');\n");
-    fprintf(fp, "            sin_indx <= sin_indx+1;\n");
-    fprintf(fp, "            M_AXIS_tVALID <= '1';\n");
-    fprintf(fp, "            M_AXIS_tDATA <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));\n");
-    fprintf(fp, "        end if;\n");
+    fprintf(fp, "    if rising_edge(M_AXIS_ACLK) then\n");
+    fprintf(fp, "       if (M_AXIS_ARESETN='0') then    --- Asynch reset\n");
+    fprintf(fp, "           cnt         <= (others=>'0');\n");
+    fprintf(fp, "           sin_indx    <= (others=>'0');\n");
+    fprintf(fp, "       else\n");
+    fprintf(fp, "           cnt             <= cnt+1;\n");
+    fprintf(fp, "           M_AXIS_tVALID   <= '0';\n");
+    fprintf(fp, "           if(cnt=indx_cycle)then\n");
+    fprintf(fp, "               cnt        <= (others=>'0');\n");
+    fprintf(fp, "               sin_indx   <= sin_indx+1;\n");
+    fprintf(fp, "               if(sin_indx=SIN_TABLE_Length-1) then\n");
+    fprintf(fp, "                   sin_indx       <= (others=>'0');\n");
+    fprintf(fp, "               end if;\n");
+    fprintf(fp, "               M_AXIS_tVALID  <= '1';\n");
+    fprintf(fp, "               M_AXIS_tDATA   <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));\n");
+    fprintf(fp, "           end if;\n");
+    fprintf(fp, "       end if;\n");
     fprintf(fp, "    end if;\n");
     fprintf(fp, "end process;\n");
     fprintf(fp, "end Behavioral;\n");
@@ -78,6 +88,6 @@ int main() {
 
     /* closing the file */
     fclose(fp);
-    printf("file created! use the generated .vhd\r\n");
+    printf("File created! use the generated .vhd\r\n");
 
 }

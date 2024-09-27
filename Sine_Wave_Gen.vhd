@@ -5,38 +5,49 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity Sine_Wave_Gen is
 generic (
-    IP_INPUT_FREQUENCY : integer := 100000000;
-    OUTPUT_SIGNAL_FREQUENCY : integer := 50
+    IP_INPUT_FREQUENCY         : integer := 100000000; --- in Hz
+    OUTPUT_SIGNAL_FREQUENCY    : integer := 50;        --- in Hz, max = M_AXIS_ACLK/512, if you need more, make MAX_OUTPUT_SIGNAL_FRQ true
+    MAX_OUTPUT_SIGNAL_FRQ      : boolean := false      --- true this if you need more than M_AXIS_ACLK/512 then you can achieve M_AXIS_ACLK/256
 );
 Port (
-    clk : in STD_LOGIC;
-    M_AXIS_tDATA : out std_logic_vector(15 downto 0);
-    M_AXIS_tVALID : out std_logic
+    M_AXIS_ACLK    : in STD_LOGIC;
+    M_AXIS_ARESETN : in STD_LOGIC;   --- negative reset
+    M_AXIS_tDATA   : out std_logic_vector(11 downto 0);
+    M_AXIS_tVALID  : out std_logic
 );
 end Sine_Wave_Gen;
 
 architecture Behavioral of Sine_Wave_Gen is
-constant Cycles  : integer := (IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY)/(2**SIN_DATA_WIDTH-1);
-signal sin_indx  : unsigned(6 downto 0) := (others=>'0');
-signal cnt       : unsigned(31 downto 0) := (others=>'0');
-
-constant SIN_TABLE_Length : integer := 256;
-constant SIN_DATA_WIDTH : integer := 16;
+constant SIN_TABLE_Length       : integer := 256;
+constant SIN_DATA_WIDTH         : integer := 12;
 type SIN_TABLEType is array(0 to SIN_TABLE_Length-1) of integer;
-constant SIN_TABLE : SIN_TABLEType :=(0,804,1607,2410,3211,4011,4808,5602,6392,7179,7961,8739,9512,10278,11039,11793,12539,13278,14010,14732,15446,16151,16846,17530,18204,18868,19519,20159,20787,21403,22005,22594,23170,23732,24279,24812,25330,25832,26319,26790,27245,27684,28106,28511,28898,29269,29621,29956,30273,30572,30852,31114,31357,31581,31785,31971,32138,32285,32413,32521,32610,32679,32728,32758,32767,32758,32728,32679,32610,32521,32413,32285,32138,31971,31785,31581,31357,31114,30852,30572,30273,29956,29621,29269,28898,28511,28106,27684,27245,26790,26319,25832,25330,24812,24279,23732,23170,22594,22005,21403,20787,20159,19519,18868,18204,17530,16846,16151,15446,14732,14010,13278,12539,11793,11039,10278,9512,8739,7961,7179,6392,5602,4808,4011,3211,2410,1607,804,0,-804,-1607,-2410,-3211,-4011,-4808,-5602,-6392,-7179,-7962,-8739,-9512,-10278,-11039,-11793,-12539,-13279,-14010,-14732,-15446,-16151,-16846,-17530,-18205,-18868,-19519,-20159,-20787,-21403,-22005,-22594,-23170,-23732,-24279,-24812,-25330,-25832,-26319,-26790,-27245,-27684,-28106,-28511,-28898,-29269,-29621,-29956,-30273,-30572,-30852,-31114,-31357,-31581,-31786,-31971,-32138,-32285,-32413,-32521,-32610,-32679,-32728,-32758,-32767,-32758,-32728,-32679,-32610,-32521,-32413,-32285,-32138,-31971,-31785,-31580,-31356,-31114,-30852,-30572,-30273,-29956,-29621,-29269,-28898,-28510,-28105,-27684,-27245,-26790,-26319,-25832,-25329,-24812,-24279,-23731,-23170,-22594,-22005,-21402,-20787,-20159,-19519,-18867,-18204,-17530,-16845,-16151,-15446,-14732,-14009,-13278,-12539,-11792,-11038,-10278,-9511,-8739,-7961,-7179,-6392,-5601,-4807,-4010,-3211,-2410,-1607,-804);
+constant SIN_TABLE : SIN_TABLEType :=(0,50,100,150,200,250,300,350,399,448,497,546,594,642,689,737,783,829,875,920,965,1009,1052,1095,1137,1179,1219,1259,1299,1337,1375,1412,1448,1483,1517,1550,1583,1614,1644,1674,1702,1730,1756,1781,1806,1829,1851,1872,1892,1910,1928,1944,1959,1973,1986,1998,2008,2017,2025,2032,2038,2042,2045,2047,2047,2047,2045,2042,2038,2032,2025,2017,2008,1998,1986,1973,1959,1944,1928,1910,1892,1872,1851,1829,1806,1781,1756,1730,1702,1674,1644,1614,1583,1550,1517,1483,1448,1412,1375,1337,1299,1259,1219,1179,1137,1095,1052,1009,965,920,875,829,783,737,689,642,594,546,497,448,399,350,300,250,200,150,100,50,0,-50,-100,-150,-200,-250,-300,-350,-399,-448,-497,-546,-594,-642,-689,-737,-783,-829,-875,-920,-965,-1009,-1052,-1095,-1137,-1179,-1219,-1259,-1299,-1337,-1375,-1412,-1448,-1483,-1517,-1550,-1583,-1614,-1644,-1674,-1702,-1730,-1756,-1781,-1806,-1829,-1851,-1872,-1892,-1910,-1928,-1944,-1959,-1973,-1986,-1998,-2008,-2017,-2025,-2032,-2038,-2042,-2045,-2047,-2047,-2047,-2045,-2042,-2038,-2032,-2025,-2017,-2008,-1998,-1986,-1973,-1959,-1944,-1928,-1910,-1892,-1872,-1851,-1829,-1806,-1781,-1756,-1730,-1702,-1674,-1644,-1614,-1583,-1550,-1517,-1483,-1448,-1412,-1375,-1337,-1299,-1259,-1219,-1179,-1137,-1095,-1052,-1009,-965,-920,-875,-829,-783,-737,-689,-642,-594,-546,-497,-448,-399,-350,-300,-250,-200,-150,-100,-50);
+
+signal indx_cycle      : integer := IP_INPUT_FREQUENCY/OUTPUT_SIGNAL_FREQUENCY/SIN_TABLE_Length;
+signal sin_indx        : unsigned(6 downto 0) := (others=>'0');
+signal cnt             : unsigned(31 downto 0) := (others=>'0');
 
 begin
-process(clk)
+indx_cycle  <= 0 when MAX_OUTPUT_SIGNAL_FRQ=true;
+process(M_AXIS_ACLK)
 begin
-    if rising_edge(clk) then
-        cnt <= cnt+1;
-        M_AXIS_tVALID <= '0';
-        if(cnt=Cycles)then
-            cnt <= (others=>'0');
-            sin_indx <= sin_indx+1;
-            M_AXIS_tVALID <= '1';
-            M_AXIS_tDATA <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));
-        end if;
+    if rising_edge(M_AXIS_ACLK) then
+       if (M_AXIS_ARESETN='0') then    --- Asynch reset
+           cnt         <= (others=>'0');
+           sin_indx    <= (others=>'0');
+       else
+           cnt             <= cnt+1;
+           M_AXIS_tVALID   <= '0';
+           if(cnt=indx_cycle)then
+               cnt        <= (others=>'0');
+               sin_indx   <= sin_indx+1;
+               if(sin_indx=SIN_TABLE_Length-1) then
+                   sin_indx       <= (others=>'0');
+               end if;
+               M_AXIS_tVALID  <= '1';
+               M_AXIS_tDATA   <= std_logic_vector(to_signed(SIN_TABLE(to_integer(sin_indx)),SIN_DATA_WIDTH));
+           end if;
+       end if;
     end if;
 end process;
 end Behavioral;
